@@ -1,2 +1,6 @@
 # macOS junk
 .DS_Store
+
+# personal data: import it from this computer, never upload it
+my-progress.json
+hifz-backup-*.json
