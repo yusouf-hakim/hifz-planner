@@ -22,7 +22,7 @@ The far rotation stays whole. Everything older is revised in mushaf order on a s
 | Ayah-level precision | Built. Portions do not yet end at natural stopping points. |
 | Mutashabihat alerts | Built for new memorization. Uses a list derived by comparing ayah wording, not a curated source. |
 | Progress reports | Built. Still to align with this roadmap (see step 4). |
-| Catch-up plans | Reworked (step 3 below). Written and tested; waiting to be published to the app. |
+| Catch-up plans | Reworked and live (step 3 below). |
 | Week calendar with placed sittings | Built |
 | Session ratings | Built (step 1 below) |
 
@@ -49,7 +49,7 @@ Spot heavy days in the calendar ahead of time and suggest a lighter plan for the
 - Ramp back up over a few days afterward.
 - Limit: the planner can only read the calendar when it is open and the calendar has been loaded.
 
-### 3. Catch-up rework (written, waiting to be published)
+### 3. Catch-up rework (built)
 
 - **Backlog holds far revision only.** Near revision repeats daily, so a missed day leaves nothing to make up. Extra passes left undone are simply still due.
 - **The rotation keeps its place.** Far parts left undone, and each fully skipped day's far share, go into a backlog of pages. The cycle moves on as if the day had been done.
@@ -65,7 +65,7 @@ Spot heavy days in the calendar ahead of time and suggest a lighter plan for the
 - Alerts: also check near revision and far parts rated Weak, but not all far revision. Let a mastered pair be dismissed.
 - Portions end at natural stopping points (page end or rub' al-hizb) where possible.
 
-### 5. Backup and restore
+### 5. Backup and restore (built)
 
 Export and import all progress data. Also makes the move to a standalone website painless.
 

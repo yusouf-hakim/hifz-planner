@@ -50,4 +50,5 @@ The full roadmap is in my Claude project as "Quran Revision App - Roadmap". Stat
 
 - Built: core plan, ayah-level precision, mutashabihat alerts on new memorization, progress reports, catch-up plans, week calendar with placed sittings, session ratings with extra passes and near-revision graduation, busy-week mode.
 - Also done since the move: git, backup and restore, hosting, Google sign-in, Drive saving, direct Google Calendar.
-- Next: catch-up rework (far revision only, cap of 20-30% extra a day, weakest first, offer a reset), then report and alert refinements, then tafsir links. Class days are skipped for now.
+- Catch-up rework is built (far revision only, capped extra time, weakest first, reset offered).
+- Next: report and alert refinements (roadmap step 4), then tafsir links. Class days are skipped for now.
