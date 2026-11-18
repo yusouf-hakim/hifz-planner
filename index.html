@@ -457,6 +457,16 @@ legend + * { clear: both; }
         </div>
       </fieldset>
     </form>
+    <fieldset id="backup">
+      <legend>Backup and restore</legend>
+      <p>Save all your progress and settings to a file you keep, or load a saved file back in. Loading a file replaces what is in the app now.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button type="button" class="btn" id="bk-export">Download backup</button>
+        <button type="button" class="btn ghost" id="bk-import">Restore from file</button>
+        <input type="file" id="bk-file" accept=".json,application/json" hidden>
+      </div>
+      <p id="bk-msg" role="status" style="margin-top:10px"></p>
+    </fieldset>
     </section>
   </main>
 </div>

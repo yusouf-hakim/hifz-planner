@@ -748,6 +748,36 @@
     for (var d = x, n = 0; d <= y && n < 60; d = E.addDays(d, 1), n++) E.setBusy(state, d, 0);
     E.rebuild(state, today); changed();
   });
+  /* ---------- backup and restore ---------- */
+  $("bk-export").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "hifz-backup-" + E.today() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    $("bk-msg").textContent = "Backup downloaded as " + a.download + ". Keep it somewhere safe.";
+  });
+  $("bk-import").addEventListener("click", function () { $("bk-file").click(); });
+  $("bk-file").addEventListener("change", function () {
+    var f = this.files[0], input = this; if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var data;
+      try { data = JSON.parse(rd.result); } catch (e) { data = null; }
+      if (!data || typeof data !== "object" || !data.pages || typeof data.pages !== "object" || !data.set) {
+        $("bk-msg").textContent = "That file isn't a Hifz Planner backup, so nothing was changed.";
+      } else if (confirm("Replace your current progress with the contents of " + f.name + "? This can't be undone, so download a backup first if you aren't sure.")) {
+        state = E.normalize(data);
+        ensureDay(); persist(); renderAll();
+        $("bk-msg").textContent = "Restored from " + f.name + ".";
+      } else {
+        $("bk-msg").textContent = "Cancelled. Nothing was changed.";
+      }
+      input.value = "";
+    };
+    rd.readAsText(f);
+  });
   $("f-set").addEventListener("submit", function (ev) { ev.preventDefault(); });
   $("f-set").addEventListener("change", readSettings);
   $("set-perJuz").addEventListener("input", function () { $("out-perJuz").textContent = this.value + " min"; });
