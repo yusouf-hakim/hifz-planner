@@ -58,7 +58,7 @@
       .then(function (r) { return r.json(); }).then(function (j) {
         return (j.items || []).filter(function (c) {
           return (c.selected || c.primary) && !/#contacts@group\.v\.calendar\.google\.com$/.test(c.id);
-        }).map(function (c) { return c.id; });
+        }).map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id }; });
       });
   }
   function listEvents(calendarId, fromLocal, toLocal, pageToken) {

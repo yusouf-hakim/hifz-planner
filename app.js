@@ -473,13 +473,19 @@
       });
     }
     // Read every calendar that is switched on. One that can't be read (for example, no permission) is skipped, not fatal.
-    G.token(true).then(G.listCalendars).then(function (ids) {
+    cal.read = [];
+    G.token(true).then(G.listCalendars).then(function (list) {
       var chain = Promise.resolve();
-      ids.forEach(function (id) {
+      list.forEach(function (c) {
         chain = chain.then(function () {
-          return page(id, "", 0).catch(function (e) { if (e && (e.code === "http_403" || e.code === "http_404")) return all; throw e; });
+          var before = all.length;
+          return page(c.id, "", 0).then(function () { cal.read.push(c.name + ": " + (all.length - before)); }, function (e) {
+            if (e && (e.code === "http_403" || e.code === "http_404")) { cal.read.push(c.name + ": skipped (" + (e.message || e.code) + ")"); return; }
+            throw e;
+          });
         });
       });
+      if (!list.length) cal.read.push("no calendars found");
       return chain.then(function () { return all; });
     }).then(function (evs) {
       storeEvents(evs); cal.loaded = true; cal.at = Date.now(); cal.busy = false; renderCal();
@@ -580,8 +586,8 @@
 
     $("cal-go").disabled = cal.busy;
     $("cal-go").textContent = cal.busy && !cal.loaded ? "Loading" : cal.busy ? "Working" : cal.loaded ? "Update" : "Load my Google Calendar";
-    $("cal-at").textContent = cal.loaded ? "Updated " + new Date(cal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + " \u00b7 " + plural(cal.count, "event") + " in the next 7 days"
-      : "Not loaded yet. Until you load it, suggestions assume your days are empty.";
+    $("cal-at").textContent = cal.loaded ? "Updated " + new Date(cal.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + " \u00b7 " + plural(cal.count, "event") + " in the next 7 days" + (cal.read && cal.read.length ? " · Calendars read: " + cal.read.join("; ") : "")
+      :"Not loaded yet. Until you load it, suggestions assume your days are empty.";
     Array.prototype.forEach.call(document.querySelectorAll("[data-act=calmode]"), function (b) { b.setAttribute("aria-pressed", b.dataset.v === cal.mode ? "true" : "false"); });
     var bz = busyDays(), bh = "";
     if (bz.length) {
