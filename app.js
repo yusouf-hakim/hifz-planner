@@ -1,7 +1,7 @@
 /* Hifz planner page: rendering, saving, calendar. Scheduling logic lives in engine.js. */
 (function () {
   "use strict";
-  var E = window.Hifz, KEY = "hifz-planner-v1", CAL = "Google Calendar";
+  var E = window.Hifz, G = window.HifzGoogle, KEY = "hifz-planner-v1";
   var state = E.defaults(), today = E.today();
   var docRef = null, dbState = "loading", saveTimer = null, inflight = false, dirty = false;
   var brush = "solid", cells = {}, editTimer = null, mouseDown = false, lastPointer = "";
@@ -28,7 +28,7 @@
   function persist() {
     state.rev = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* storage may be unavailable */ }
-    if (!docRef) { setStatus(dbState === "loading" ? "Connecting" : "Saved on this device only"); return; }
+    if (!docRef) { setStatus(dbState === "connecting" ? "Connecting to Google" : "Saved on this device only"); return; }
     dirty = true; setStatus("Saving");
     clearTimeout(saveTimer); saveTimer = setTimeout(flush, 700);
   }
@@ -37,39 +37,38 @@
     inflight = true; dirty = false;
     docRef.set(JSON.parse(JSON.stringify(state))).then(function () {
       inflight = false;
-      if (dirty) flush(); else setStatus("Saved");
+      if (dirty) flush(); else setStatus("Saved to Google Drive");
     }, function (e) {
-      inflight = false;
-      setStatus(e && e.code === "quota_exceeded" ? "Storage is full. Changes are kept on this device."
-        : "Couldn't save to Claude. Changes are kept on this device.");
+      inflight = false; dirty = true; // keep it pending so the next sign-in or change retries
+      if (e && e.code === "needs_reauth") { setStatus("Sign in again to sync. Changes are kept on this device."); showSignIn(true); }
+      else setStatus("Couldn't save to Google Drive. Changes are kept on this device.");
     });
   }
+  function showSignIn(on) { $("g-btn").hidden = !on; }
   function ensureDay() {
     today = E.today();
     if (!state.day || state.day.date !== today) { E.rollover(state, today); return true; }
     if (state.day.stale) { delete state.day.stale; E.rebuild(state, today); return true; }
     return false;
   }
-  function connect() {
-    if (!window.claude || !window.claude.use) { dbState = "off"; setStatus("Saved on this device only"); return; }
-    var timer = setTimeout(function () {
-      if (dbState === "loading") setStatus("Still connecting. Changes are kept on this device for now.");
-    }, 10000);
-    window.claude.use("db").then(function (db) {
-      if (!db) { clearTimeout(timer); dbState = "off"; setStatus("Saved on this device only"); return; }
-      var ref = db.doc("app/state");
-      return ref.get().then(function (snap) {
-        clearTimeout(timer); dbState = "on"; docRef = ref;
-        var remote = snap.exists ? snap.data() : null, push = false;
-        if (remote && (remote.rev || 0) >= (state.rev || 0)) state = E.normalize(JSON.parse(JSON.stringify(remote)));
-        else if (state.rev) push = true;
-        var rolled = ensureDay();
-        if (push || rolled && state.rev) persist(); else setStatus("Saved");
-        renderAll();
-      });
-    }).catch(function () {
-      clearTimeout(timer); dbState = "off";
-      setStatus("Couldn't reach saved data. Changes are kept on this device.");
+  // Connect saving to the Google Drive app folder. interactive = true is only for a click (it may open Google's sign-in popup).
+  function connect(interactive) {
+    if (dbState === "connecting") return;
+    dbState = "connecting"; setStatus("Connecting to Google");
+    G.token(interactive).then(function () { return G.driveGet(); }).then(function (snap) {
+      dbState = "on"; docRef = { set: G.driveSet }; showSignIn(false);
+      var remote = snap.exists ? snap.data() : null, push = false;
+      if (remote && remote.pages && (remote.rev || 0) >= (state.rev || 0)) state = E.normalize(JSON.parse(JSON.stringify(remote)));
+      else if (state.rev) push = true;
+      var rolled = ensureDay();
+      if (push || rolled && state.rev || dirty) persist(); else setStatus("Saved to Google Drive");
+      renderAll();
+    }).catch(function (e) {
+      dbState = "off"; showSignIn(true);
+      setStatus(e && e.code === "needs_reauth" ? "Saved on this device only. Sign in with Google to sync."
+        : e && e.code === "google_unavailable" ? "Couldn't load Google sign-in. Saved on this device only."
+        : e && e.code === "access_denied" ? "Google sign-in was cancelled. Saved on this device only."
+        : "Couldn't reach Google Drive. Saved on this device only.");
     });
   }
 
@@ -431,30 +430,12 @@
   /* ---------- calendar ---------- */
   function calError(e) {
     var c = e && e.code;
-    if (c === "needs_reauth") return "Google Calendar needs reconnecting. Reconnect it in Claude's settings under Connectors, then try again.";
-    if (c === "server_not_connected" || c === "selection_required" || c === "server_not_found") return "Google Calendar isn't connected for this page. Add it in Claude's settings under Connectors, then try again.";
-    if (c === "not_in_manifest" || c === "approval_required" || c === "consent_required" || c === "not_granted") return "Calendar access wasn't allowed for this page. Press the button again and allow it when Claude asks.";
-    if (c === "blocked_by_policy") return "Your organization's settings block calendar access from this page.";
-    if (c === "capability_disabled" || c === "capability_removed") return "The calendar can't be reached from this view. Open the page in the Claude app and try again.";
-    if (c === "server_unavailable" || c === "rate_limited") return "Google Calendar didn't answer. Try again in a moment.";
-    if (c === "tool_error") return "Google Calendar reported a problem: " + (e.message || "no details given") + ".";
+    if (c === "needs_reauth" || c === "interaction_required" || c === "login_required") return "Sign in with Google again (the button at the bottom of the sidebar), then try again.";
+    if (c === "access_denied" || c === "popup_closed" || c === "popup_failed_to_open") return "Google sign-in didn't finish. Press the button again and allow access when Google asks. If nothing opens, allow pop-ups for this site.";
+    if (c === "google_unavailable") return "Google sign-in couldn't load. Check your internet connection or ad blocker, then reload the page.";
+    if (c === "server_unavailable") return "Google Calendar didn't answer. Try again in a moment.";
+    if (c === "http_403") return "Google refused access to the calendar. Make sure the Calendar API is switched on and that you allowed calendar access at sign-in." + (e.message ? " (" + e.message + ")" : "");
     return "Something went wrong reaching the calendar" + (e && e.message ? ": " + e.message : "") + ". Try again.";
-  }
-  function getMcp() {
-    if (!window.claude || !window.claude.use) return Promise.resolve(null);
-    return window.claude.use("mcp");
-  }
-  // One read of the next seven days. A read is safe to retry once.
-  function listWeek(mcp, token, retry) {
-    var input = { startTime: today + "T00:00:00", endTime: E.addDays(today, 7) + "T00:00:00", orderBy: "startTime", pageSize: 250 };
-    if (token) input.pageToken = token;
-    return mcp.callTool(CAL, "list_events", input, { cache: false }).catch(function (e) {
-      if (retry && e && e.retryable) {
-        return new Promise(function (res) { setTimeout(res, (e.retryAfterMs || 1200) + Math.random() * 800); })
-          .then(function () { return listWeek(mcp, token, false); });
-      }
-      throw e;
-    });
   }
   function storeEvents(evs) {
     cal.ev = {}; cal.allday = {}; cal.count = 0;
@@ -483,19 +464,15 @@
   function updateCal() {
     if (cal.busy) return;
     cal.busy = true; cal.msg = ""; renderCal();
-    getMcp().then(function (mcp) {
-      if (!mcp) throw { code: "capability_disabled" };
-      var all = [];
-      function page(token, n) {
-        return listWeek(mcp, token, true).then(function (res) {
-          var pl = res && res.payload;
-          if (!pl || !Array.isArray(pl.events)) throw { code: "upstream_error", message: "the calendar's answer couldn't be read" };
-          all = all.concat(pl.events);
-          return pl.nextPageToken && n < 4 ? page(pl.nextPageToken, n + 1) : all;
-        });
-      }
-      return page("", 0);
-    }).then(function (evs) {
+    var all = [];
+    function page(token, n) {
+      return G.listEvents(today + "T00:00:00", E.addDays(today, 7) + "T00:00:00", token).then(function (pl) {
+        if (!pl || !Array.isArray(pl.items)) throw { code: "upstream_error", message: "the calendar's answer couldn't be read" };
+        all = all.concat(pl.items);
+        return pl.nextPageToken && n < 4 ? page(pl.nextPageToken, n + 1) : all;
+      });
+    }
+    G.token(true).then(function () { return page("", 0); }).then(function (evs) {
       storeEvents(evs); cal.loaded = true; cal.at = Date.now(); cal.busy = false; renderCal();
     }).catch(function (e) { cal.busy = false; cal.msg = calError(e); renderCal(); });
   }
@@ -548,22 +525,20 @@
     var todo = cal.sits.filter(function (s) { return s.on && s.s >= 0 && !s.added; }), date = cal.sel;
     if (!todo.length) return;
     cal.busy = true; cal.msg = ""; renderCal();
-    getMcp().then(function (mcp) {
-      if (!mcp) throw { code: "capability_disabled" };
+    G.token(true).then(function () {
       var chain = Promise.resolve();
       todo.forEach(function (s) {
         chain = chain.then(function () {
-          return mcp.callTool(CAL, "create_event", {
+          return G.createEvent({
             summary: s.title, description: s.desc + "\n\nPlanned with Hifz Planner.",
-            startTime: date + "T" + hhmm(s.s) + ":00", endTime: date + "T" + hhmm(s.s + s.dur) + ":00"
-          }).then(function (res) {
-            var pl = res && res.payload;
+            start: date + "T" + hhmm(s.s) + ":00", end: date + "T" + hhmm(s.s + s.dur) + ":00"
+          }).then(function (pl) {
             s.st = "Added to your calendar"; s.bad = false; s.added = true;
             s.link = pl && typeof pl.htmlLink === "string" && pl.htmlLink.indexOf("https://") === 0 ? pl.htmlLink : "";
           }, function (e) {
             var c = e && e.code; s.bad = true;
             // A timeout doesn't prove the event wasn't created, so a write is never retried automatically.
-            s.st = c === "server_unavailable" || c === "upstream_error" || c === "cancelled"
+            s.st = c === "server_unavailable" || c === "upstream_error"
               ? "Couldn't confirm this one. Press Update to check your calendar before adding it again." : calError(e);
           }).then(renderCal);
         });
@@ -814,7 +789,12 @@
   try { var raw = localStorage.getItem(KEY); if (raw) state = E.normalize(JSON.parse(raw)); } catch (e) { state = E.defaults(); }
   buildMap(); buildSettings(); ayahHints(); route();
   ensureDay(); renderAll();
-  connect();
+  $("g-btn").addEventListener("click", function () {
+    if (docRef) G.token(true).then(function () { showSignIn(false); flush(); }).catch(function (e) { setStatus(calError(e)); });
+    else connect(true);
+  });
+  if (G.wasSignedIn()) connect(false); // try to reconnect quietly if you signed in before
+  else setStatus("Saved on this device only. Sign in with Google to sync.");
   setInterval(tick, 60000);
   document.addEventListener("visibilitychange", tick);
 })();
