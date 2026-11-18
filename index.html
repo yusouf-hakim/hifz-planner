@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hifz Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Reem+Kufi:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a daily sheet. Today's three portions lead, the 604-page mushaf map is the one bold element. */
+:root {
+  --paper: #ECEFE8; --surface: #F8FAF4; --ink: #14251F; --muted: #5A6A62; --line: #CDD6CC;
+  --accent: #0F6B57; --on-accent: #F4FAF6;
+  --new: #94660F; --near: #0F6B57; --far: #35568A; --weak: #B0432B;
+  --display: "Reem Kufi", "Segoe UI", Tahoma, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E1815; --surface: #15221E; --ink: #E3EBE3; --muted: #93A39A; --line: #2A3A34;
+    --accent: #4FBF9F; --on-accent: #08130F;
+    --new: #D8A848; --near: #4FBF9F; --far: #8DAEE6; --weak: #EC8A6E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0E1815; --surface: #15221E; --ink: #E3EBE3; --muted: #93A39A; --line: #2A3A34;
+  --accent: #4FBF9F; --on-accent: #08130F;
+  --new: #D8A848; --near: #4FBF9F; --far: #8DAEE6; --weak: #EC8A6E;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--body); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: 34px; } h2 { font-size: 21px; } h3 { font-size: 19px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100%; }
+.side { background: var(--surface); border-right: 1px solid var(--line); padding: 32px 20px; display: flex; flex-direction: column; gap: 36px; position: sticky; top: 0; align-self: start; min-height: 100vh; }
+.brand { padding: 0 12px; }
+.brand .ar { display: block; font-family: var(--display); font-size: 30px; color: var(--accent); line-height: 1.2; }
+.brand b { display: block; font: 600 18px var(--display); margin-top: 6px; }
+nav { display: flex; flex-direction: column; gap: 4px; }
+nav a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; text-decoration: none; color: var(--muted); font-weight: 500; }
+nav a::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: transparent; }
+nav a:hover { color: var(--ink); background: var(--paper); }
+nav a[aria-current="page"] { color: var(--ink); background: var(--paper); font-weight: 600; }
+nav a[aria-current="page"]::before { background: var(--accent); }
+#save { margin-top: auto; padding: 0 12px; font-size: 13px; color: var(--muted); }
+main { padding: 48px 56px 96px; }
+.view { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+.view[hidden] { display: none; }
+.page-head { display: flex; flex-direction: column; gap: 8px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.page-head p { color: var(--muted); max-width: 62ch; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.stat { padding: 22px 24px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; font: 600 28px/1.1 var(--display); margin-bottom: 6px; }
+.stat span { font-size: 13.5px; color: var(--muted); line-height: 1.4; display: block; }
+
+.progress { display: flex; flex-direction: column; gap: 10px; }
+.progress .lab { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; color: var(--muted); }
+.note { border-left: 3px solid var(--weak); background: var(--surface); padding: 14px 18px; border-radius: 0 6px 6px 0; font-size: 15px; }
+.note.info { border-color: var(--accent); }
+.catch { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--weak); border-radius: 10px; padding: 22px 28px; }
+.catch.light { border-left-color: var(--new); }
+tr.lightday td { background: color-mix(in srgb, var(--new) 7%, transparent); }
+#ahead-table td:last-child { white-space: normal; min-width: 110px; }
+#cal-msg { display: flex; flex-direction: column; gap: 12px; }
+.catch h3 { margin-bottom: 6px; }
+.catch p { color: var(--muted); font-size: 15px; max-width: 64ch; }
+.catch .acts { margin-top: 16px; }
+.opts { margin-top: 10px; }
+.opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.opt:last-child { border-bottom: 0; padding-bottom: 0; }
+.opt strong { display: block; }
+.opt span { font-size: 14px; color: var(--muted); }
+.opt select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+#plan-notes { display: flex; flex-direction: column; gap: 12px; }
+#plan-notes:empty { display: none; }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+
+.tiers { display: flex; flex-direction: column; gap: 24px; }
+.tier { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--c); border-radius: 10px; }
+.tier.new { --c: var(--new); } .tier.near { --c: var(--near); } .tier.far { --c: var(--far); }
+.tier > header { display: flex; align-items: baseline; gap: 14px; padding: 20px 28px 0; }
+.tier > header h3, .tier > header .ar { white-space: nowrap; }
+.tier > header .ar { font-family: var(--display); color: var(--c); font-size: 18px; }
+.tier > header .t { margin-left: auto; font-weight: 600; white-space: nowrap; }
+.tier .why { padding: 6px 28px 0; font-size: 14px; color: var(--muted); }
+.sub { margin: 8px 28px 0; padding-top: 18px; border-top: 1px solid var(--line); font: 600 12.5px var(--body); color: var(--weak); text-transform: uppercase; letter-spacing: .07em; }
+.sim { padding: 0 28px 22px; }
+.sim .sub { margin: 0 0 12px; color: var(--new); }
+.sim p { font-size: 14.5px; color: var(--muted); max-width: 62ch; margin-bottom: 12px; }
+.sim ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.sim li { line-height: 1.7; }
+.sim .chip { margin-left: 4px; color: var(--muted); }
+.sim .chip.weak { color: var(--weak); }
+.allrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 28px 0; font-size: 14px; color: var(--muted); }
+ul.rows { list-style: none; margin: 0; padding: 8px 28px 12px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 20px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.row.skipped .what strong { color: var(--muted); }
+.row:last-child { border-bottom: 0; }
+.row .what strong { display: block; font-weight: 600; font-size: 16.5px; }
+.row .what span { font-size: 14px; color: var(--muted); }
+.row .t { color: var(--muted); font-size: 14px; white-space: nowrap; text-align: right; }
+.row .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.row .acts .link { margin-left: 6px; }
+.row.done .what strong { text-decoration: line-through; text-decoration-color: var(--muted); color: var(--muted); }
+.empty { padding: 12px 28px 24px; color: var(--muted); font-size: 15px; }
+
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); border-radius: 6px; padding: 8px 16px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .5; cursor: default; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 14px; }
+.chip { white-space: nowrap; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; border: 1px solid currentColor; }
+.chip.solid { color: var(--near); } .chip.weak { color: var(--weak); } .chip.hes { color: var(--new); } .chip.skip { color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 28px; }
+.panel > h2 { margin-bottom: 6px; }
+.panel > h2 + p { color: var(--muted); font-size: 14.5px; margin-bottom: 22px; max-width: 62ch; }
+.calbar { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-bottom: 20px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 8px 18px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+ul.sess { list-style: none; margin: 20px 0; padding: 0; }
+.sess li { display: grid; grid-template-columns: auto auto 1fr; gap: 6px 18px; align-items: start; padding: 18px 0; border-top: 1px solid var(--line); }
+.sess input[type="checkbox"] { width: 20px; height: 20px; margin-top: 8px; accent-color: var(--accent); }
+.sess input[type="time"], .field input, .field select, .tools input, .tools select { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; min-height: 40px; }
+.sess .what strong { display: block; }
+.sess .what span { display: block; font-size: 14px; color: var(--muted); white-space: pre-line; margin-top: 2px; }
+.sess .st { grid-column: 3; font-size: 14px; font-weight: 600; color: var(--near); }
+.sess .st.bad { color: var(--weak); }
+
+.panel { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .ax { fill: var(--muted); font: 12px var(--body); }
+.chart .plan { fill: var(--line); }
+.chart .done { fill: var(--accent); }
+.chart .hit { fill: transparent; }
+.chart .day:hover .done { filter: brightness(1.15); }
+.tip { position: absolute; z-index: 5; pointer-events: none; background: var(--ink); color: var(--paper); border-radius: 6px; padding: 8px 12px; font-size: 13px; line-height: 1.5; white-space: nowrap; }
+.tip b { display: block; }
+#pr-chart { position: relative; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend .sw { width: 12px; height: 12px; }
+details { margin-top: 16px; } summary { cursor: pointer; color: var(--accent); font-size: 14.5px; } details .scroll { margin-top: 16px; }
+.split { display: flex; gap: 2px; height: 14px; margin-bottom: 14px; }
+.split i { display: block; border-radius: 3px; min-width: 3px; } .split .ok { background: var(--near); } .split .mid { background: var(--new); } .split .bad { background: var(--weak); }
+.facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 36px; }
+.facts dt { font-size: 12.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.facts dd { margin: 0; font-size: 16.5px; font-weight: 500; }
+.meter { display: inline-block; vertical-align: middle; width: 90px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-right: 12px; }
+.meter i { display: block; height: 100%; background: var(--far); }
+#pr-juz td, #pr-daily td { line-height: 1.5; padding-top: 12px; padding-bottom: 12px; }
+#pr-juz td:last-child, #pr-juz th:last-child { text-align: left; }
+#cal-msg:empty { display: none; }
+.wk { padding: 0; overflow: hidden; }
+.wk-head, .wk-body { display: grid; grid-template-columns: 58px repeat(7, minmax(0, 1fr)); }
+.wk-head { border-bottom: 1px solid var(--line); }
+.wk-day { border: 0; border-left: 1px solid var(--line); background: transparent; padding: 12px 6px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.wk-day span { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.wk-day b { font: 600 20px/1.5 var(--display); width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+.wk-day.now b { color: var(--accent); }
+.wk-day.sel b { background: var(--ink); color: var(--paper); }
+.wk-day i { font-style: normal; font-size: 11.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: color-mix(in srgb, var(--far) 18%, var(--surface)); border-radius: 3px; padding: 1px 6px; }
+.wk-body { position: relative; margin: 10px 0 14px; }
+.wk-hours { position: relative; }
+.wk-hours span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.wk-col { position: relative; border-left: 1px solid var(--line); cursor: pointer; background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% 48px; }
+.wk-col.sel { background-color: color-mix(in srgb, var(--ink) 3%, transparent); cursor: default; }
+.wk-col.picking { cursor: crosshair; }
+.free { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--accent) 9%, transparent); pointer-events: none; }
+.ev, .sit { position: absolute; left: 0; border-radius: 4px; padding: 2px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; text-align: left; }
+.ev { background: color-mix(in srgb, var(--far) 18%, var(--surface)); border-left: 3px solid var(--far); color: var(--ink); }
+.ev.own { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); border-left-color: var(--accent); }
+.ev b, .sit b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev span, .sit span { display: block; color: var(--muted); white-space: nowrap; }
+.sit { right: 3px; width: auto; cursor: pointer; border: 2px dashed var(--c); background: color-mix(in srgb, var(--c) 20%, var(--surface)); color: var(--ink); z-index: 2; font-family: inherit; }
+.sit.t-new { --c: var(--new); } .sit.t-near { --c: var(--near); } .sit.t-far, .sit.t-weak, .sit.t-catch { --c: var(--far); }
+.sit.short { padding: 0 6px; font-size: 11px; line-height: 12px; } .sit.short span { display: none; }
+.sit.pick { border-style: solid; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); }
+.sit.added { border-style: solid; cursor: default; opacity: 1; }
+.sit.off { opacity: .45; }
+.nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--weak); z-index: 3; pointer-events: none; }
+.nowline::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--weak); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; background: var(--c); }
+.dot.t-new { --c: var(--new); } .dot.t-near { --c: var(--near); } .dot.t-far, .dot.t-weak, .dot.t-catch { --c: var(--far); }
+#cal-out > h2 { margin-bottom: 10px; } #cal-out > p { margin-bottom: 12px; max-width: 68ch; font-size: 14.5px; }
+.sess .st:empty { display: none; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 16px 24px 16px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.7; }
+th { font-weight: 600; color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: .07em; padding-top: 0; }
+tr:last-child td { border-bottom: 0; padding-bottom: 0; }
+td:first-child { white-space: nowrap; font-weight: 600; }
+td:last-child, th:last-child { text-align: right; padding-right: 0; white-space: nowrap; }
+
+.brushes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+.brush { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; cursor: pointer; background: transparent; }
+.brush[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
+.sw { width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+.sw.solid { background: var(--far); border-color: var(--far); }
+.sw.shaky, .sw.weak { background: var(--weak); border-color: var(--weak); }
+.sw.hes { background: var(--new); border-color: var(--new); }
+.sw.recent { background: var(--near); border-color: var(--near); }
+.map { display: flex; flex-direction: column; gap: 5px; user-select: none; }
+.maphead { display: grid; grid-template-columns: 44px 1fr; gap: 10px; font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+.jrow { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; }
+.jlab { border: 0; background: transparent; color: var(--muted); font: 600 13px var(--body); text-align: left; padding: 0; cursor: pointer; }
+.jlab:hover { color: var(--accent); text-decoration: underline; }
+.cells { display: grid; grid-template-columns: repeat(23, 1fr); gap: 5px; }
+.pg { aspect-ratio: 1; min-width: 0; padding: 0; border: 1px solid var(--line); border-radius: 3px; background: transparent; cursor: pointer; }
+.pg:hover { border-color: var(--ink); }
+.pg.s1 { background: var(--far); border-color: var(--far); }
+.pg.s2 { background: var(--weak); border-color: var(--weak); }
+.pg.s3 { background: var(--new); border-color: var(--new); }
+.pg.nr { background: var(--near); border-color: var(--near); }
+.pg.nr.s2 { background: linear-gradient(135deg, var(--near) 50%, var(--weak) 50%); }
+.pg.due { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--ink); position: relative; z-index: 1; }
+.tools { display: flex; flex-direction: column; gap: 20px; }
+.tools form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tools input[type="number"] { width: 92px; }
+.tools select { flex: 1; min-width: 150px; max-width: 240px; }
+.tools label { color: var(--muted); font-size: 14.5px; }
+
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 36px; }
+.field label, .field .lab { display: block; font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+.field small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 8px; line-height: 1.45; }
+.field input[type="number"], .field input[type="time"], .field select { width: 100%; }
+.field input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 40px; padding: 0; border: 0; background: none; }
+.days { display: flex; gap: 6px; flex-wrap: wrap; }
+.days label { font-weight: 400; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin: 0; font-size: 14px; cursor: pointer; }
+.days input { accent-color: var(--accent); margin: 0; min-height: 0; padding: 0; }
+#f-set { display: flex; flex-direction: column; gap: 24px; }
+fieldset { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 28px; margin: 0; min-width: 0; }
+legend { font: 600 21px var(--display); padding: 0; float: left; width: 100%; margin-bottom: 24px; }
+legend + * { clear: both; }
+
+@media (max-width: 900px) {
+  .shell { display: block; }
+  .side { position: static; min-height: 0; padding: 16px 16px 0; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 12px; padding: 0 4px; } .brand .ar { font-size: 24px; } .brand b { margin: 0; }
+  nav { flex-direction: row; overflow-x: auto; gap: 4px; }
+  nav a { white-space: nowrap; padding: 10px 12px; border-radius: 0; background: none !important; border-bottom: 3px solid transparent; }
+  nav a::before { display: none; }
+  nav a[aria-current="page"] { border-bottom-color: var(--accent); }
+  #save { order: -1; margin: 0; padding: 0 4px; }
+  main { padding: 28px 16px 64px; }
+  h1 { font-size: 28px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(2) { border-right: 0; } .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  .stat { padding: 16px; }
+  .tier > header, .tier .why { padding-left: 18px; padding-right: 18px; } .sub { margin-left: 18px; margin-right: 18px; }
+  ul.rows { padding-left: 18px; padding-right: 18px; } .sim { padding-left: 18px; padding-right: 18px; } .allrow { padding-left: 18px; padding-right: 18px; } .empty { padding-left: 18px; padding-right: 18px; }
+  .panel, fieldset { padding: 18px; }
+  .catch { padding: 18px; } .opt { grid-template-columns: 1fr; }
+  .fields, .facts { grid-template-columns: 1fr; }
+  .calbar .seg { margin-left: 0 !important; }
+  .wk-head { display: flex; overflow-x: auto; } .wk-corner { display: none; } .wk-day { flex: 1 0 52px; border-left: 0; }
+  .wk-day i { display: none; }
+  .wk-body { grid-template-columns: 50px 1fr; } .wk-col:not(.sel) { display: none; }
+  .maphead { display: none; }
+  .cells { gap: 2px; } .jrow, .maphead { grid-template-columns: 22px 1fr; gap: 6px; }
+  .sess li { grid-template-columns: auto 1fr; } .sess .what, .sess .st { grid-column: 1 / -1; }
+  th, td { padding-right: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><span class="ar" lang="ar" dir="rtl">وِرد اليوم</span><b>Hifz Planner</b></div>
+    <nav aria-label="Pages">
+      <a href="#today">Today</a>
+      <a href="#calendar">Calendar</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#progress">Progress</a>
+      <a href="#mushaf">Mushaf</a>
+      <a href="#pace">Settings</a>
+    </nav>
+    <div id="save" role="status">Loading</div>
+  </aside>
+  <main>
+    <section class="view" id="v-today">
+      <div class="page-head"><h1>Today's wird</h1><p id="dates"></p></div>
+      <div class="stats" id="stats"></div>
+      <div class="progress"><div class="lab"><span>Progress</span><span id="plan-sum"></span></div><div class="bar" aria-hidden="true"><i id="plan-bar" style="width:0"></i></div></div>
+      <div id="plan-notes"></div>
+      <div class="tiers" id="tiers"></div>
+    </section>
+
+    <section class="view" id="v-calendar" hidden>
+      <div class="page-head"><h1>Calendar</h1><p>Your week from Google Calendar, with the day's sittings placed in your free time. Nothing is added to your calendar until you approve it.</p></div>
+      <div class="calbar" style="margin:0">
+        <button type="button" class="btn" id="cal-go" data-act="calupdate">Load my Google Calendar</button>
+        <span class="muted" id="cal-at" style="font-size:14.5px"></span>
+        <div class="seg" role="group" aria-label="Where to place sittings" style="margin-left:auto">
+          <button type="button" data-act="calmode" data-v="earliest">Earliest</button>
+          <button type="button" data-act="calmode" data-v="spread">Spread out</button>
+          <button type="button" data-act="calmode" data-v="latest">Latest</button>
+        </div>
+      </div>
+      <div id="cal-msg"></div>
+      <div class="panel wk" id="cal-grid"></div>
+      <div class="panel" id="cal-out"></div>
+    </section>
+
+    <section class="view" id="v-schedule" hidden>
+      <div class="page-head"><h1>Schedule</h1><p>Today and the next six days, assuming each day's plan gets finished. Anything you miss is picked up the following day.</p></div>
+      <div class="panel scroll"><table id="ahead-table"></table></div>
+      <div class="panel">
+        <h2>Busy days</h2>
+        <p>Put a stretch such as finals week on a light plan ahead of time: near revision and the weakest pages stay, new memorization pauses and far revision drops to its minimum. The load ramps back up over two days afterward.</p>
+        <form id="f-busy" class="tools" style="flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px">
+          <label for="bz-a">From</label><input type="date" id="bz-a">
+          <label for="bz-b">to</label><input type="date" id="bz-b">
+          <button class="btn ghost" type="submit">Use light plans</button>
+        </form>
+        <p class="muted" id="busy-list" style="margin:16px 0 0"></p>
+      </div>
+    </section>
+
+    <section class="view" id="v-progress" hidden>
+      <div class="page-head"><h1>Progress</h1><p>How consistent you have been, how much you covered, and where the weak spots are.</p></div>
+      <div class="calbar" style="margin:0">
+        <div class="seg" role="group" aria-label="Period">
+          <button type="button" id="pr-7" data-act="period" data-v="7">Last 7 days</button>
+          <button type="button" id="pr-28" data-act="period" data-v="28">Last 4 weeks</button>
+        </div>
+        <span class="muted" id="pr-range" style="font-size:14.5px"></span>
+        <button type="button" class="btn ghost" data-act="copysum" style="margin-left:auto">Copy summary</button>
+      </div>
+      <div class="stats" id="pr-stats"></div>
+      <div class="panel">
+        <h2>Daily time</h2>
+        <p>Minutes of memorization and revision you marked as done each day, against what the plan asked for.</p>
+        <div class="legend"><span><i class="sw" style="background:var(--accent);border-color:var(--accent)"></i>Done</span><span><i class="sw" style="background:var(--line)"></i>Planned</span></div>
+        <div class="chart" id="pr-chart"></div><div class="tip" id="pr-tip" hidden></div>
+        <details><summary>Daily figures</summary><div class="scroll"><table id="pr-daily"></table></div></details>
+      </div>
+      <div class="panel"><h2>How revision went</h2><p>How the pages you revised in this period were rated.</p><div id="pr-quality"></div></div>
+      <div class="panel"><h2>Memorization</h2><p>Where you stand overall and when you would finish.</p><div id="pr-mem"></div></div>
+      <div class="panel"><h2>By juz</h2><p id="pr-juz-note"></p><div class="scroll"><table id="pr-juz"></table></div></div>
+      <div class="panel"><h2>Weak spots</h2><p>Everything currently rated Weak or Some hesitation. These get extra passes in the daily plan until rated Solid again.</p><div id="pr-weak"></div></div>
+    </section>
+
+    <section class="view" id="v-mushaf" hidden>
+      <div class="page-head"><h1>Mushaf</h1><p>Mark exactly what you have memorized. <span id="map-sum"></span></p></div>
+      <div class="panel">
+        <h2>Page map</h2>
+        <p>Each square is one page of the 15-line Madani mushaf, one row per juz. Pick a brush, then click pages or a juz number. Drag with a mouse to paint a run of pages. A partly filled square is a page memorized in part.</p>
+        <div class="brushes" role="group" aria-label="Brush">
+        <button type="button" class="brush" data-act="brush" data-v="solid"><span class="sw solid"></span>Solid</button>
+        <button type="button" class="brush" data-act="brush" data-v="shaky"><span class="sw shaky"></span>Weak</button>
+        <button type="button" class="brush" data-act="brush" data-v="recent"><span class="sw recent"></span>Recently memorized</button>
+        <button type="button" class="brush" data-act="brush" data-v="erase"><span class="sw"></span>Not memorized</button>
+      </div>
+      <div class="maphead"><span>Juz</span><span>Pages</span></div>
+        <div class="map" id="map"></div>
+      </div>
+      <div class="panel">
+        <h2>Mark a range</h2>
+        <p>Applies the selected brush to an exact run of ayahs, or to whole pages. Leave the ayah boxes empty to take whole surahs.</p>
+        <div class="tools">
+        <form id="f-surah">
+          <label for="sr">From</label><select id="sr" aria-label="First surah"></select>
+          <label for="sr-a">ayah</label><input type="number" id="sr-a" min="1" placeholder="1">
+          <label for="sr-b">to</label><select id="sr-b" aria-label="Last surah"></select>
+          <label for="sr-b-a">ayah</label><input type="number" id="sr-b-a" min="1">
+          <button class="btn ghost" type="submit">Apply brush</button>
+        </form>
+        <form id="f-range">
+          <label for="rg-a">Whole pages</label><input type="number" id="rg-a" min="1" max="604" placeholder="from">
+          <label for="rg-b">to</label><input type="number" id="rg-b" min="1" max="604" placeholder="to">
+          <button class="btn ghost" type="submit">Apply brush</button>
+        </form>
+      </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-pace" hidden>
+      <div class="page-head"><h1>Settings</h1><p>Set how fast you want to go and how much time you can give. Changes apply to today's plan straight away.</p></div>
+      <form id="f-set">
+      <fieldset>
+        <legend>New memorization</legend>
+        <div class="fields">
+          <div class="field"><label for="set-pace">How much per day</label>
+            <select id="set-pace">
+              <option value="0">None, revision only</option><option value="0.25">Quarter page</option>
+              <option value="0.5">Half page</option><option value="1">1 page</option><option value="1.5">1.5 pages</option>
+              <option value="2">2 pages</option><option value="3">3 pages</option><option value="5">5 pages</option>
+            </select></div>
+          <div class="field"><label for="set-order">Order</label>
+            <select id="set-order"><option value="back">From the back: juz 30, then 29, 28…</option><option value="front">From the front: page 1 onward</option></select>
+            <small>The next portion is the first ayahs in this order that aren't marked memorized, measured out to the nearest whole ayah.</small></div>
+          <div class="field"><label for="set-minNew">Minutes to memorize one new page</label>
+            <input type="number" id="set-minNew" min="5" max="240" step="5"></div>
+          <div class="field"><span class="lab">Memorization days</span>
+            <div class="days" id="set-days"></div><small>Revision is planned every day.</small></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Revision</legend>
+        <div class="fields">
+          <div class="field"><label for="set-budget">Minutes I can give per day</label>
+            <input type="number" id="set-budget" min="10" max="720" step="5">
+            <small>New memorization and near revision are fitted first. Far revision takes what is left.</small></div>
+          <div class="field"><label for="set-perJuz">Minutes to read a well-memorized juz: <output id="out-perJuz"></output></label>
+            <input type="range" id="set-perJuz" min="20" max="40" step="1">
+            <small>Weak pages are budgeted at 1.6 times this, hesitant pages at 1.3 times, recent pages at 1.4 times.</small></div>
+          <div class="field"><label for="set-nearDays">Days a new page stays in near revision</label>
+            <input type="number" id="set-nearDays" min="3" max="120">
+            <small>After that it moves to far revision once you have rated it Solid, or after twice this long at most.</small></div>
+          <div class="field"><label for="set-maxCycle">Longest far cycle, in days</label>
+            <input type="number" id="set-maxCycle" min="1" max="60">
+            <small>Everything older is covered at least this often, even if that goes over budget.</small></div>
+          <div class="field"><label for="set-weakEvery">Extra pass for weak pages every (days)</label>
+            <input type="number" id="set-weakEvery" min="1" max="14">
+            <small>Until rated Solid twice in a row.</small></div>
+          <div class="field"><label for="set-hesEvery">Extra pass for hesitant pages every (days)</label>
+            <input type="number" id="set-hesEvery" min="2" max="30">
+            <small>Until rated Solid once.</small></div>
+          <div class="field"><label for="set-catchPct">Most extra time for catch-up, % of daily minutes</label>
+            <input type="number" id="set-catchPct" min="10" max="50" step="5">
+            <small>Far revision you miss is made up in this much extra time a day, weakest parts first. If that would take over a week, you can start fresh instead.</small></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Calendar suggestions</legend>
+        <div class="fields">
+          <div class="field"><label for="set-dayStart">Earliest start</label><input type="time" id="set-dayStart"></div>
+          <div class="field"><label for="set-dayEnd">Latest finish</label><input type="time" id="set-dayEnd"></div>
+          <div class="field"><label for="set-maxSession">Longest single sitting, in minutes</label><input type="number" id="set-maxSession" min="15" max="180" step="5"></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Busy days</legend>
+        <div class="fields">
+          <div class="field"><label for="set-lightMin">Minutes on a light day</label><input type="number" id="set-lightMin" min="5" max="240" step="5">
+            <small>If your calendar shows less free time than this, the light plan uses what is free.</small></div>
+          <div class="field"><label for="set-busyBelow">Suggest a light day when free time is under (minutes)</label><input type="number" id="set-busyBelow" min="0" max="600" step="5">
+            <small>A day is also suggested whenever the full plan doesn't fit. Set 0 to use only that rule.</small></div>
+        </div>
+      </fieldset>
+    </form>
+    </section>
+  </main>
+</div>
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
