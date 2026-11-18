@@ -52,8 +52,17 @@
   }
 
   /* ----- Calendar ----- */
-  function listEvents(fromLocal, toLocal, pageToken) {
-    var u = "https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250" +
+  // The calendars you have switched on in Google Calendar (yours plus any shared with you), minus birthdays.
+  function listCalendars() {
+    return api("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=freeBusyReader&maxResults=250")
+      .then(function (r) { return r.json(); }).then(function (j) {
+        return (j.items || []).filter(function (c) {
+          return (c.selected || c.primary) && !/#contacts@group\.v\.calendar\.google\.com$/.test(c.id);
+        }).map(function (c) { return c.id; });
+      });
+  }
+  function listEvents(calendarId, fromLocal, toLocal, pageToken) {
+    var u = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calendarId) + "/events?singleEvents=true&orderBy=startTime&maxResults=250" +
       "&timeMin=" + encodeURIComponent(new Date(fromLocal).toISOString()) + "&timeMax=" + encodeURIComponent(new Date(toLocal).toISOString()) +
       (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
     return api(u).then(function (r) { return r.json(); });
@@ -99,5 +108,5 @@
     });
   }
 
-  window.HifzGoogle = { token: token, wasSignedIn: wasSignedIn, listEvents: listEvents, createEvent: createEvent, driveGet: driveGet, driveSet: driveSet };
+  window.HifzGoogle = { token: token, wasSignedIn: wasSignedIn, listCalendars: listCalendars, listEvents: listEvents, createEvent: createEvent, driveGet: driveGet, driveSet: driveSet };
 })();

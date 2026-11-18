@@ -465,14 +465,23 @@
     if (cal.busy) return;
     cal.busy = true; cal.msg = ""; renderCal();
     var all = [];
-    function page(token, n) {
-      return G.listEvents(today + "T00:00:00", E.addDays(today, 7) + "T00:00:00", token).then(function (pl) {
+    function page(calId, token, n) {
+      return G.listEvents(calId, today + "T00:00:00", E.addDays(today, 7) + "T00:00:00", token).then(function (pl) {
         if (!pl || !Array.isArray(pl.items)) throw { code: "upstream_error", message: "the calendar's answer couldn't be read" };
         all = all.concat(pl.items);
-        return pl.nextPageToken && n < 4 ? page(pl.nextPageToken, n + 1) : all;
+        return pl.nextPageToken && n < 4 ? page(calId, pl.nextPageToken, n + 1) : all;
       });
     }
-    G.token(true).then(function () { return page("", 0); }).then(function (evs) {
+    // Read every calendar that is switched on. One that can't be read (for example, no permission) is skipped, not fatal.
+    G.token(true).then(G.listCalendars).then(function (ids) {
+      var chain = Promise.resolve();
+      ids.forEach(function (id) {
+        chain = chain.then(function () {
+          return page(id, "", 0).catch(function (e) { if (e && (e.code === "http_403" || e.code === "http_404")) return all; throw e; });
+        });
+      });
+      return chain.then(function () { return all; });
+    }).then(function (evs) {
       storeEvents(evs); cal.loaded = true; cal.at = Date.now(); cal.busy = false; renderCal();
     }).catch(function (e) { cal.busy = false; cal.msg = calError(e); renderCal(); });
   }
