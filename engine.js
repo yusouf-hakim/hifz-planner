@@ -525,6 +525,14 @@
     return n;
   }
 
+  // Days with some revision done in the last 7 days (today included), out of 7 or fewer if you started recently.
+  function weekDays(st, date) {
+    var of = 7, n = 0, i;
+    if (st.start) of = Math.max(1, Math.min(7, diffDays(date, st.start) + 1));
+    for (i = 0; i < of; i++) { var h = st.hist[addDays(date, -i)]; if (h && h.m > 0) n++; }
+    return { n: n, of: of };
+  }
+
   /* ---------- catch-up ---------- */
   // Drop the backlog and carry on from the current place in the cycle. Missed parts come round again on their next turn.
   function resetBacklog(st) { st.backlog = {}; st.caughtUp = null; st.cuKeep = 0; }
@@ -739,7 +747,7 @@
     today: today, addDays: addDays, diffDays: diffDays, dow: dow,
     defaults: defaults, normalize: normalize, memOrder: memOrder, newLabel: newLabel, newPages: newPages,
     applyNew: applyNew, undoNew: undoNew, buildDay: buildDay, rollover: rollover, rebuild: rebuild,
-    isDone: isDone, isNear: isNear, rate: rate, recordHist: recordHist, streak: streak, preview: preview,
+    isDone: isDone, isNear: isNear, rate: rate, recordHist: recordHist, streak: streak, weekDays: weekDays, preview: preview,
     setBusy: setBusy, clearBusy: clearBusy, resetBacklog: resetBacklog, clearIn: clearIn,
     report: report, juzTable: juzTable, weakRanges: weakRanges, forecast: forecast,
     queueUnits: queueUnits, freeGaps: freeGaps, fillGaps: fillGaps, sittings: sittings, arrange: arrange,

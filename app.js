@@ -84,12 +84,12 @@
     return m;
   }
   function renderStats() {
-    var m = state.day.meta, c = m.counts, s = E.streak(state, today);
+    var m = state.day.meta, c = m.counts, wk = E.weekDays(state, today);
     var tiles = [
       [pg(c.mem), "pages memorized, " + (c.mem / 20).toFixed(1) + " juz"],
       [mins(m.total), "planned today, budget " + mins(m.budget)],
       [m.cycle ? m.cycle + (m.cycle === 1 ? " day" : " days") : "\u2013", m.cycle ? "to get through all far revision" : "far cycle starts once pages are older"],
-      [s, (s === 1 ? "day" : "days") + " in a row"]
+      [wk.n + " of " + wk.of, wk.of === 7 ? "days with revision this past week" : (wk.of === 1 ? "day" : "days") + " since you started"]
     ];
     $("stats").innerHTML = tiles.map(function (t) { return '<div class="stat"><b>' + esc(t[0]) + "</b><span>" + esc(t[1]) + "</span></div>"; }).join("");
   }
