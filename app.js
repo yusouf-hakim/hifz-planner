@@ -820,6 +820,34 @@
     if (ev.target.type === "checkbox") { s.on = ev.target.checked; renderCal(); }
     else if (/^\d\d:\d\d/.test(ev.target.value)) tryMove(k, hm(ev.target.value));
   });
+  // Dragging a sitting up or down within the selected day. A plain click (no real movement) still works the old way.
+  var drag = null, dragged = false;
+  $("cal-grid").addEventListener("pointerdown", function (ev) {
+    var el = ev.target.closest(".sit"); if (!el || el.disabled || ev.button > 0) return;
+    drag = { el: el, i: +el.dataset.i, y0: ev.clientY, top0: el.offsetTop, moved: false };
+    try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+  });
+  $("cal-grid").addEventListener("pointermove", function (ev) {
+    if (!drag) return;
+    var dy = ev.clientY - drag.y0;
+    if (!drag.moved && Math.abs(dy) < 5) return;
+    drag.moved = true;
+    var col = drag.el.parentNode, x = cal.sits[drag.i];
+    var top = Math.max(0, Math.min(col.clientHeight - drag.el.offsetHeight, drag.top0 + dy));
+    drag.el.style.top = top + "px"; drag.el.style.zIndex = 5; drag.el.classList.add("pick");
+    drag.min = Math.round((cal.h0 * 60 + top / HH * 60) / 5) * 5;
+    var sp = drag.el.querySelector("span"); if (sp) sp.textContent = clock(drag.min) + " – " + clock(drag.min + x.dur);
+  });
+  function endDrag() {
+    if (!drag) return;
+    var d = drag; drag = null;
+    if (!d.moved) return;
+    dragged = true; setTimeout(function () { dragged = false; }, 0);
+    tryMove(d.i, d.min);
+  }
+  $("cal-grid").addEventListener("pointerup", endDrag);
+  $("cal-grid").addEventListener("pointercancel", endDrag);
+  $("cal-grid").addEventListener("click", function (ev) { if (dragged) { ev.stopImmediatePropagation(); ev.stopPropagation(); } });
   // Clicking the calendar: another day's column selects that day; with a sitting picked, a click moves it there.
   $("cal-grid").addEventListener("click", function (ev) {
     if (ev.target.closest("[data-act]")) return;

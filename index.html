@@ -189,11 +189,11 @@ details { margin-top: 16px; } summary { cursor: pointer; color: var(--accent); f
 .ev.own { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); border-left-color: var(--accent); }
 .ev b, .sit b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev span, .sit span { display: block; color: var(--muted); white-space: nowrap; }
-.sit { right: 3px; width: auto; cursor: pointer; border: 2px dashed var(--c); background: color-mix(in srgb, var(--c) 20%, var(--surface)); color: var(--ink); z-index: 2; font-family: inherit; }
+.sit { right: 3px; width: auto; cursor: grab; touch-action: none; user-select: none; border: 2px dashed var(--c); background: color-mix(in srgb, var(--c) 20%, var(--surface)); color: var(--ink); z-index: 2; font-family: inherit; }
 .sit.t-new { --c: var(--new); } .sit.t-near { --c: var(--near); } .sit.t-far, .sit.t-weak, .sit.t-catch { --c: var(--far); }
 .sit.short { padding: 0 6px; font-size: 11px; line-height: 12px; } .sit.short span { display: none; }
 .sit.pick { border-style: solid; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent); }
-.sit.added { border-style: solid; cursor: default; opacity: 1; }
+.sit.added { border-style: solid; cursor: default; touch-action: auto; opacity: 1; }
 .sit.off { opacity: .45; }
 .nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--weak); z-index: 3; pointer-events: none; }
 .nowline::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--weak); }
