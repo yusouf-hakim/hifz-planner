@@ -128,7 +128,7 @@
       set: {
         order: "back", route: [], pace: 0.5, memDays: [true, true, true, true, true, true, true],
         minNew: 40, perJuz: 28, budget: 60, nearDays: 30, maxCycle: 10, weakEvery: 3, hesEvery: 6, lightMin: 30, busyBelow: 60, catchPct: 25,
-        dayStart: "06:00", dayEnd: "22:30", maxSession: 45
+        dayStart: "06:00", dayEnd: "22:30", maxSession: 45, colorNew: "5", colorRev: "10" /* Google event colors: 5 Banana (yellow), 10 Basil (green) */
       }
     };
   }

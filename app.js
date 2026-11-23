@@ -403,7 +403,12 @@
 
   /* ---------- settings ---------- */
   var NUMS = { minNew: [5, 240], budget: [10, 720], perJuz: [20, 40], nearDays: [3, 120], maxCycle: [1, 60], weakEvery: [1, 14], hesEvery: [2, 30], lightMin: [5, 240], busyBelow: [0, 600], maxSession: [15, 180], catchPct: [10, 50] };
+  // Google Calendar's event colors, by the id its API uses. "" leaves the calendar's own default color.
+  var GCOLORS = [["", "Calendar's default"], ["1", "Lavender"], ["2", "Sage"], ["3", "Grape"], ["4", "Flamingo"], ["5", "Banana (yellow)"], ["6", "Tangerine (orange)"],
+    ["7", "Peacock (teal)"], ["8", "Graphite (grey)"], ["9", "Blueberry (blue)"], ["10", "Basil (green)"], ["11", "Tomato (red)"]];
   function buildSettings() {
+    var opts = GCOLORS.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + "</option>"; }).join("");
+    $("set-colorNew").innerHTML = opts; $("set-colorRev").innerHTML = opts;
     $("set-days").innerHTML = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(function (n, i) {
       return '<label for="set-d' + i + '"><input type="checkbox" id="set-d' + i + '">' + n + "</label>";
     }).join("");
@@ -434,6 +439,7 @@
     for (k in NUMS) $("set-" + k).value = s[k];
     $("out-perJuz").textContent = s.perJuz + " min";
     $("set-dayStart").value = s.dayStart; $("set-dayEnd").value = s.dayEnd;
+    $("set-colorNew").value = s.colorNew; $("set-colorRev").value = s.colorRev;
     s.memDays.forEach(function (v, i) { $("set-d" + i).checked = !!v; });
   }
   function readSettings() {
@@ -454,6 +460,7 @@
     for (k in NUMS) { v = parseFloat($("set-" + k).value); if (isFinite(v)) s[k] = Math.max(NUMS[k][0], Math.min(NUMS[k][1], Math.round(v))); }
     if (/^\d\d:\d\d/.test($("set-dayStart").value)) s.dayStart = $("set-dayStart").value.slice(0, 5);
     if (/^\d\d:\d\d/.test($("set-dayEnd").value)) s.dayEnd = $("set-dayEnd").value.slice(0, 5);
+    s.colorNew = $("set-colorNew").value; s.colorRev = $("set-colorRev").value;
     s.memDays = s.memDays.map(function (_, i) { return $("set-d" + i).checked; });
     E.rebuild(state, today); persist(); renderAll();
   }
@@ -577,7 +584,8 @@
         chain = chain.then(function () {
           return G.createEvent(target.id, {
             summary: s.title, description: s.desc + "\n\nPlanned with Hifz Planner.",
-            start: date + "T" + hhmm(s.s) + ":00", end: date + "T" + hhmm(s.s + s.dur) + ":00"
+            start: date + "T" + hhmm(s.s) + ":00", end: date + "T" + hhmm(s.s + s.dur) + ":00",
+            colorId: s.tier === "new" ? state.set.colorNew : state.set.colorRev // new memorization one color, all revision another
           }).then(function (pl) {
             s.st = "Added to " + target.name; s.bad = false; s.added = true;
             s.link = pl && typeof pl.htmlLink === "string" && pl.htmlLink.indexOf("https://") === 0 ? pl.htmlLink : "";

@@ -83,6 +83,7 @@
       start: { dateTime: ev.start }, end: { dateTime: ev.end }
     };
     if (tz) { body.start.timeZone = tz; body.end.timeZone = tz; }
+    if (ev.colorId) body.colorId = String(ev.colorId);
     return api("https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calendarId) + "/events", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
     }).then(function (r) { return r.json(); });
