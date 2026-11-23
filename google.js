@@ -61,20 +61,29 @@
         }).map(function (c) { return { id: c.id, name: c.summaryOverride || c.summary || c.id }; });
       });
   }
+  // Where new sittings go: a calendar someone shared with you that you can edit (such as a school calendar), else your own main one.
+  // Calendars you own are not chosen here, only ones shared with edit access, so an extra personal calendar is never picked by accident.
+  function writeCalendar() {
+    return api("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&maxResults=250")
+      .then(function (r) { return r.json(); }).then(function (j) {
+        var shared = (j.items || []).filter(function (c) { return c.accessRole === "writer" && !c.primary && !/@group\.v\.calendar\.google\.com$/.test(c.id); });
+        return shared.length ? { id: shared[0].id, name: shared[0].summaryOverride || shared[0].summary || shared[0].id } : { id: "primary", name: "your calendar" };
+      });
+  }
   function listEvents(calendarId, fromLocal, toLocal, pageToken) {
     var u = "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calendarId) + "/events?singleEvents=true&orderBy=startTime&maxResults=250" +
       "&timeMin=" + encodeURIComponent(new Date(fromLocal).toISOString()) + "&timeMax=" + encodeURIComponent(new Date(toLocal).toISOString()) +
       (pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "");
     return api(u).then(function (r) { return r.json(); });
   }
-  function createEvent(ev) {
+  function createEvent(calendarId, ev) {
     var tz = ""; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { tz = ""; }
     var body = {
       summary: ev.summary, description: ev.description,
       start: { dateTime: ev.start }, end: { dateTime: ev.end }
     };
     if (tz) { body.start.timeZone = tz; body.end.timeZone = tz; }
-    return api("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+    return api("https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calendarId) + "/events", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
     }).then(function (r) { return r.json(); });
   }
@@ -108,5 +117,5 @@
     });
   }
 
-  window.HifzGoogle = { token: token, wasSignedIn: wasSignedIn, listCalendars: listCalendars, listEvents: listEvents, createEvent: createEvent, driveGet: driveGet, driveSet: driveSet };
+  window.HifzGoogle = { token: token, wasSignedIn: wasSignedIn, listCalendars: listCalendars, writeCalendar: writeCalendar, listEvents: listEvents, createEvent: createEvent, driveGet: driveGet, driveSet: driveSet };
 })();

@@ -571,15 +571,15 @@
     var todo = cal.sits.filter(function (s) { return s.on && s.s >= 0 && !s.added; }), date = cal.sel;
     if (!todo.length) return;
     cal.busy = true; cal.msg = ""; renderCal();
-    G.token(true).then(function () {
+    G.token(true).then(G.writeCalendar).then(function (target) {
       var chain = Promise.resolve();
       todo.forEach(function (s) {
         chain = chain.then(function () {
-          return G.createEvent({
+          return G.createEvent(target.id, {
             summary: s.title, description: s.desc + "\n\nPlanned with Hifz Planner.",
             start: date + "T" + hhmm(s.s) + ":00", end: date + "T" + hhmm(s.s + s.dur) + ":00"
           }).then(function (pl) {
-            s.st = "Added to your calendar"; s.bad = false; s.added = true;
+            s.st = "Added to " + target.name; s.bad = false; s.added = true;
             s.link = pl && typeof pl.htmlLink === "string" && pl.htmlLink.indexOf("https://") === 0 ? pl.htmlLink : "";
           }, function (e) {
             var c = e && e.code; s.bad = true;
