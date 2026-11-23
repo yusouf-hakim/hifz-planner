@@ -408,9 +408,29 @@
       return '<label for="set-d' + i + '"><input type="checkbox" id="set-d' + i + '">' + n + "</label>";
     }).join("");
   }
+  /* ----- my own memorization route ----- */
+  var HOW = [["fwd", "forward, in mushaf order"], ["back-juz", "backward, juz by juz"], ["back-surah", "backward, surah by surah"]];
+  function surahOptions(sel) {
+    return E.NAMES.map(function (n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === sel ? " selected" : "") + ">" + (i + 1) + ". " + esc(n) + "</option>"; }).join("");
+  }
+  function renderRoute() {
+    var route = state.set.route || [], box = $("route-list"), sig = JSON.stringify(route);
+    if (box.dataset.sig === sig) return; // unchanged, so don't rebuild (keeps keyboard focus)
+    box.dataset.sig = sig;
+    box.innerHTML = route.length ? route.map(function (r, i) {
+      return '<div class="route-row" data-i="' + i + '"><span class="n">' + (i + 1) + "</span>" +
+        '<select class="r-from" aria-label="Step ' + (i + 1) + ' first surah">' + surahOptions(+r.from) + "</select><span>to</span>" +
+        '<select class="r-to" aria-label="Step ' + (i + 1) + ' last surah">' + surahOptions(+r.to) + "</select>" +
+        '<select class="r-how" aria-label="Step ' + (i + 1) + ' direction">' + HOW.map(function (h) { return '<option value="' + h[0] + '"' + (h[0] === r.how ? " selected" : "") + ">" + h[1] + "</option>"; }).join("") + "</select>" +
+        '<button type="button" class="btn ghost" data-r="up" aria-label="Move step ' + (i + 1) + ' up"' + (i === 0 ? " disabled" : "") + ">↑</button>" +
+        '<button type="button" class="btn ghost" data-r="down" aria-label="Move step ' + (i + 1) + ' down"' + (i === route.length - 1 ? " disabled" : "") + ">↓</button>" +
+        '<button type="button" class="btn ghost" data-r="del" aria-label="Remove step ' + (i + 1) + '">Remove</button></div>';
+    }).join("") : '<p class="muted">No steps yet. Until you add one, the planner follows “From the back”.</p>';
+  }
   function fillSettings() {
     var s = state.set, k;
     $("set-pace").value = String(s.pace); $("set-order").value = s.order;
+    $("route-box").hidden = s.order !== "route"; renderRoute();
     for (k in NUMS) $("set-" + k).value = s[k];
     $("out-perJuz").textContent = s.perJuz + " min";
     $("set-dayStart").value = s.dayStart; $("set-dayEnd").value = s.dayEnd;
@@ -419,7 +439,18 @@
   function readSettings() {
     var s = state.set, k, v;
     s.pace = parseFloat($("set-pace").value) || 0;
-    s.order = $("set-order").value === "front" ? "front" : "back";
+    var ov = $("set-order").value;
+    s.order = ov === "front" || ov === "route" ? ov : "back";
+    if (!s.route) s.route = [];
+    if (s.order === "route") {
+      var rows = $("route-list").querySelectorAll(".route-row");
+      if (rows.length) {
+        s.route = Array.prototype.map.call(rows, function (r) {
+          return { from: +r.querySelector(".r-from").value, to: +r.querySelector(".r-to").value, how: r.querySelector(".r-how").value };
+        });
+        $("route-list").dataset.sig = JSON.stringify(s.route); // the list on screen already matches, so no redraw needed
+      } else if (!s.route.length) s.route = [{ from: 1, to: 114, how: "back-juz" }]; // a starting point: same as "From the back"
+    }
     for (k in NUMS) { v = parseFloat($("set-" + k).value); if (isFinite(v)) s[k] = Math.max(NUMS[k][0], Math.min(NUMS[k][1], Math.round(v))); }
     if (/^\d\d:\d\d/.test($("set-dayStart").value)) s.dayStart = $("set-dayStart").value.slice(0, 5);
     if (/^\d\d:\d\d/.test($("set-dayEnd").value)) s.dayEnd = $("set-dayEnd").value.slice(0, 5);
@@ -767,6 +798,19 @@
       input.value = "";
     };
     rd.readAsText(f);
+  });
+  function routeChanged() { E.rebuild(state, today); persist(); renderAll(); }
+  $("route-add").addEventListener("click", function () {
+    var r = state.set.route = state.set.route || [];
+    r.push({ from: 1, to: 114, how: "fwd" }); routeChanged();
+  });
+  $("route-list").addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-r]"), row = ev.target.closest(".route-row"); if (!b || !row) return;
+    var i = +row.dataset.i, r = state.set.route, t;
+    if (b.dataset.r === "del") r.splice(i, 1);
+    else if (b.dataset.r === "up" && i > 0) { t = r[i - 1]; r[i - 1] = r[i]; r[i] = t; }
+    else if (b.dataset.r === "down" && i < r.length - 1) { t = r[i + 1]; r[i + 1] = r[i]; r[i] = t; }
+    routeChanged();
   });
   $("f-set").addEventListener("submit", function (ev) { ev.preventDefault(); });
   $("f-set").addEventListener("change", readSettings);

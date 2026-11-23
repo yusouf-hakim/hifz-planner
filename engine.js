@@ -126,7 +126,7 @@
       busy: {},             // date -> {m: minutes available} for days on a light plan
       busyNo: {},           // date -> 1 for days where a light-plan suggestion was turned down
       set: {
-        order: "back", pace: 0.5, memDays: [true, true, true, true, true, true, true],
+        order: "back", route: [], pace: 0.5, memDays: [true, true, true, true, true, true, true],
         minNew: 40, perJuz: 28, budget: 60, nearDays: 30, maxCycle: 10, weakEvery: 3, hesEvery: 6, lightMin: 30, busyBelow: 60, catchPct: 25,
         dayStart: "06:00", dayEnd: "22:30", maxSession: 45
       }
@@ -164,26 +164,42 @@
   }
 
   /* ---------- new memorization ---------- */
-  function memOrder(order) {
-    var out = [], j, p;
-    if (order === "front") { for (p = 1; p <= LAST; p++) out.push(p); return out; }
-    for (j = 30; j >= 1; j--) for (p = juzStart(j); p <= juzEnd(j); p++) out.push(p);
+  // The order new memorization follows, as a list of ayah ranges [first, last] to work through one after another.
+  // "back" and "front" are presets. "route" is the user's own list of legs: each leg is a block of surahs (1-114)
+  // walked forward, backward juz by juz (pages forward inside each juz), or backward surah by surah (ayahs forward inside each).
+  function memRanges(set) {
+    var out = [], j, s;
+    if (set.order === "route" && set.route && set.route.length) {
+      set.route.forEach(function (leg) {
+        var lo = clamp(Math.round(Math.min(leg.from, leg.to)) || 1, 1, 114), hi = clamp(Math.round(Math.max(leg.from, leg.to)) || 114, 1, 114);
+        var ga = gOf(lo - 1, 1), gb = gOf(hi - 1, COUNTS[hi - 1]);
+        if (leg.how === "back-surah") { for (s = hi; s >= lo; s--) out.push([gOf(s - 1, 1), gOf(s - 1, COUNTS[s - 1])]); }
+        else if (leg.how === "back-juz") {
+          for (j = 30; j >= 1; j--) { var a = Math.max(ga, pFirst(juzStart(j))), b = Math.min(gb, pLast(juzEnd(j))); if (a <= b) out.push([a, b]); }
+        } else out.push([ga, gb]);
+      });
+      return out;
+    }
+    if (set.order === "front") return [[1, TOTAL]];
+    for (j = 30; j >= 1; j--) out.push([pFirst(juzStart(j)), pLast(juzEnd(j))]);
     return out;
   }
   // Next portion: the first unmemorized ayahs in memorization order, about `pace` pages' worth.
   function planNew(st, date, factor) {
     var set = st.set, pace = set.pace * (factor || 1);
     if (!(set.pace > 0) || !set.memDays[dow(date)]) return null;
-    var order = memOrder(set.order), spans = [], acc = 0, n = 0, i, k, g;
-    outer: for (i = 0; i < order.length; i++) {
-      var p = order[i], e = st.pages[p];
-      if (e && !e[2]) continue;
-      var free = [[pFirst(p), pLast(p)]];
-      spansOf(st, p).forEach(function (x) { free = subSpan(free, x[0], x[1]); });
-      for (k = 0; k < free.length; k++) for (g = free[k][0]; g <= free[k][1]; g++) {
-        var w = W[g] / PW[p];
-        if (n && acc + w / 2 > pace + 1e-6) break outer;
-        spans = addSpan(spans, g, g); acc += w; n++;
+    var ranges = memRanges(set), spans = [], acc = 0, n = 0, i, k, g, p;
+    outer: for (i = 0; i < ranges.length; i++) {
+      for (p = pageOf(ranges[i][0]); p <= pageOf(ranges[i][1]); p++) {
+        var e = st.pages[p];
+        if (e && !e[2]) continue;
+        var free = [[Math.max(pFirst(p), ranges[i][0]), Math.min(pLast(p), ranges[i][1])]];
+        spansOf(st, p).forEach(function (x) { free = subSpan(free, x[0], x[1]); });
+        for (k = 0; k < free.length; k++) for (g = free[k][0]; g <= free[k][1]; g++) {
+          var w = W[g] / PW[p];
+          if (n && acc + w / 2 > pace + 1e-6) break outer;
+          spans = addSpan(spans, g, g); acc += w; n++;
+        }
       }
     }
     if (!n) return null;
@@ -745,7 +761,7 @@
     spansOf: spansOf, cov: cov, setAyahs: setAyahs, rowRef: rowRef, rowPages: rowPages,
     pageWeight: function (p) { return PW[p]; }, ayahWeight: function (g) { return W[g]; },
     today: today, addDays: addDays, diffDays: diffDays, dow: dow,
-    defaults: defaults, normalize: normalize, memOrder: memOrder, newLabel: newLabel, newPages: newPages,
+    defaults: defaults, normalize: normalize, memRanges: memRanges, newLabel: newLabel, newPages: newPages,
     applyNew: applyNew, undoNew: undoNew, buildDay: buildDay, rollover: rollover, rebuild: rebuild,
     isDone: isDone, isNear: isNear, rate: rate, recordHist: recordHist, streak: streak, weekDays: weekDays, preview: preview,
     setBusy: setBusy, clearBusy: clearBusy, resetBacklog: resetBacklog, clearIn: clearIn,

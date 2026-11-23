@@ -243,6 +243,10 @@ td:last-child, th:last-child { text-align: right; padding-right: 0; white-space:
 .field input[type="number"], .field input[type="time"], .field select { width: 100%; }
 .field input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 40px; padding: 0; border: 0; background: none; }
 .days { display: flex; gap: 6px; flex-wrap: wrap; }
+.route-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.route-row .n { font-weight: 600; min-width: 1.5em; }
+.route-row select { width: auto !important; flex: 1 1 150px; min-width: 130px; }
+.route-row .btn { padding: 6px 10px; }
 .days label { font-weight: 400; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin: 0; font-size: 14px; cursor: pointer; }
 .days input { accent-color: var(--accent); margin: 0; min-height: 0; padding: 0; }
 #f-set { display: flex; flex-direction: column; gap: 24px; }
@@ -406,8 +410,14 @@ legend + * { clear: both; }
               <option value="2">2 pages</option><option value="3">3 pages</option><option value="5">5 pages</option>
             </select></div>
           <div class="field"><label for="set-order">Order</label>
-            <select id="set-order"><option value="back">From the back: juz 30, then 29, 28…</option><option value="front">From the front: page 1 onward</option></select>
+            <select id="set-order"><option value="back">From the back: juz 30, then 29, 28…</option><option value="front">From the front: page 1 onward</option><option value="route">My own route…</option></select>
             <small>The next portion is the first ayahs in this order that aren't marked memorized, measured out to the nearest whole ayah.</small></div>
+          <div class="field route" id="route-box" hidden style="grid-column:1 / -1">
+            <span class="lab">My route</span>
+            <p class="muted" style="margin:0 0 10px;font-size:14px">Each step is a block of surahs. The planner works through the steps in order and takes your next portion from the first step that still has something unmemorized. Anything you have already marked as memorized is skipped.</p>
+            <div id="route-list"></div>
+            <button type="button" class="btn ghost" id="route-add" style="margin-top:10px">Add a step</button>
+          </div>
           <div class="field"><label for="set-minNew">Minutes to memorize one new page</label>
             <input type="number" id="set-minNew" min="5" max="240" step="5"></div>
           <div class="field"><span class="lab">Memorization days</span>
