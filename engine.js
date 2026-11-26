@@ -348,16 +348,18 @@
     var nw = carry.nw && carry.nw.done ? carry.nw : light ? null : planNew(st, date, ramp);
     var newMin = nw ? nw.min : 0;
 
-    function tier(pages, ptr, target, m, carried, exclude) {
+    function tier(pages, ptr, target, m, carried, exclude, inOrder) {
       var items = (carried || []).filter(function (r) { return r.done; }); // rated or skipped rows stay as they are
       var skip = {}, doneMin = 0;
       items.forEach(function (r) { for (var p = r.a; p <= r.b; p++) skip[p] = 1; doneMin += r.min; });
       var pool = pages.filter(function (p) { return !skip[p] && !(exclude && exclude[p]); });
       var ch = chunk(pool, ptr, target - doneMin, m);
-      splitRows(toRanges(ch.pages, st)).forEach(function (r) {
+      // The pointer picks which pages, wrapping past the end; inOrder lists them in mushaf order anyway.
+      splitRows(toRanges(inOrder ? ch.pages.slice().sort(num) : ch.pages, st)).forEach(function (r) {
         var t = 0; for (var p = r.a; p <= r.b; p++) t += m(p);
         items.push({ a: r.a, b: r.b, min: t, done: 0 });
       });
+      if (inOrder) items.sort(function (x, y) { return x.a - y.a; });
       var next = ch.next;
       if (!ch.pages.length && items.length) { // today's share is already done: resume after it
         var after = items[items.length - 1].b;
@@ -371,7 +373,7 @@
     var nearTotal = sum(near.map(mNear)), farTotal = sum(far.map(mFar)), weakTotal = sum(weak.map(mFar));
     var nearShare = Math.max(avail * (far.length ? 0.7 : 1), 5);
     var nearCycle = nearTotal <= nearShare ? 1 : clamp(Math.ceil(nearTotal / nearShare), 2, 7);
-    var nearT = tier(near, st.ptr.near, nearCycle === 1 ? Infinity : nearTotal / nearCycle, mNear, carry.near);
+    var nearT = tier(near, st.ptr.near, nearCycle === 1 ? Infinity : nearTotal / nearCycle, mNear, carry.near, null, true);
     var nearMin = sum(nearT.items.map(function (r) { return r.min; }));
 
     // The far cycle is sized around the time left after new, near and today's extra passes.
@@ -463,7 +465,9 @@
         (d[t] || []).forEach(function (r) { if (isDone(r)) for (var p = r.a; p <= r.b; p++) delete bl[p]; });
       });
       ["near", "weak"].forEach(function (t) {
-        var und = (d[t] || []).filter(function (r) { return !isDone(r); })[0];
+        // Resume at the first undone row counting from the pointer, since rows may be listed out of rotation order.
+        var left = (d[t] || []).filter(function (r) { return !isDone(r); });
+        var und = left.filter(function (r) { return r.a >= st.ptr[t]; })[0] || left[0];
         st.ptr[t] = und ? und.a : (d.next && d.next[t]) || st.ptr[t];
       });
       if (d.next && d.next.far) st.ptr.far = d.next.far;
